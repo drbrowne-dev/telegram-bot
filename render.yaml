@@ -1,6 +1,0 @@
-services:
-  - type: worker
-    name: e11-lab-bot
-    env: python
-    buildCommand: pip install python-telegram-bot==20.7
-    startCommand: python main.py
