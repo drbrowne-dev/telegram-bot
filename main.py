@@ -46,14 +46,14 @@ except ValueError:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_first_name = update.effective_user.first_name
     
-    # Navigation Keyboard with your real Channel and Group links
+    # Navigation Keyboard with callback for Admin Contact
     keyboard = [
         [InlineKeyboardButton("🧪 What is E11 Lab?", url="https://e11lab.com")],
         [InlineKeyboardButton("🏦 Recommended Brokers", callback_data="brokers_list")],
         [InlineKeyboardButton("🎬 Video Tutorial", url="https://youtube.com/your-tutorial-link")],
         [InlineKeyboardButton("📢 Market Insight Channel", url="https://t.me/e11lab_TradingDesk_MarketInsight")],
         [InlineKeyboardButton("💬 E11 Lab Community Group", url="https://t.me/E11LabCommunity")],
-        [InlineKeyboardButton("💬 Contact Support Team", url="https://t.me/your_support_username")]
+        [InlineKeyboardButton("💬 Contact Support Team", callback_data="contact_admin")]
     ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -79,13 +79,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(broker_keyboard),
             parse_mode="Markdown"
         )
+    elif query.data == "contact_admin":
+        await query.message.reply_text(
+            "💬 **Contact Support Team**\n\n"
+            "Please type your message or inquiry directly in this chat. "
+            "Our team will receive it immediately and reply to you here as soon as possible!",
+            parse_mode="Markdown"
+        )
     elif query.data == "back_to_main":
         await start(update, context)
 
 async def handle_user_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sender_chat_id = update.message.chat_id
     
-    # Message Routing: Standard User -> Forward to Admin
+    # Message Routing: Standard User -> Forward to ADMIN_CHAT_ID
     if sender_chat_id != ADMIN_CHAT_ID:
         await update.message.reply_text("📩 **Message received!** Our team has been notified and will reply to you shortly.")
         await context.bot.forward_message(
