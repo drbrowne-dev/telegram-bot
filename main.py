@@ -1,21 +1,36 @@
 import os
-import asyncio
+import threading
 from flask import Flask
 from waitress import serve
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# 1. Flask Web Server Setup
+# --- 1. Flask Web Server ---
 web_app = Flask(__name__)
 
 @web_app.route('/')
 def health_check():
-    return "E11 Lab Telegram Bot is Active!", 200
+    return "E11 Lab Bot is Active!", 200
 
-# 2. Telegram Bot Handlers
+def start_flask_server():
+    port = int(os.environ.get("PORT", 8080))
+    serve(web_app, host="0.0.0.0", port=port)
+
+# --- 2. Environment Setup ---
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "123456789"))
+ADMIN_CHAT_ID_RAW = os.getenv("ADMIN_CHAT_ID", "0")
 
+if not TOKEN:
+    print("❌ FATAL: BOT_TOKEN is missing!")
+    exit(1)
+
+try:
+    ADMIN_CHAT_ID = int(ADMIN_CHAT_ID_RAW)
+except ValueError:
+    print("❌ FATAL: ADMIN_CHAT_ID must be digits only!")
+    exit(1)
+
+# --- 3. Telegram Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_first_name = update.effective_user.first_name
     
@@ -81,26 +96,17 @@ async def handle_user_messages(update: Update, context: ContextTypes.DEFAULT_TYP
         except Exception as e:
             await update.message.reply_text(f"❌ Delivery failed: {e}")
 
-# 3. Async Startup Execution
-async def main():
-    # Setup Telegram Application
+# --- 4. Process Launch ---
+if __name__ == "__main__":
+    # Launch web server thread
+    threading.Thread(target=start_flask_server, daemon=True).start()
+
+    # Launch bot
+    print("🚀 E11 Lab Bot initializing...")
     app = ApplicationBuilder().token(TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_messages))
 
-    # Initialize and start bot polling without blocking stop signals
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
-
-    # Start Flask Web Server via Waitress in executor
-    port = int(os.environ.get("PORT", 8080))
-    loop = asyncio.get_event_loop()
-    print("E11 Lab Bot & Server running...")
-    
-    # Keeps the process continuously alive on Render
-    await loop.run_in_executor(None, serve, web_app, "0.0.0.0", port)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    app.run_polling(drop_pending_updates=True)
